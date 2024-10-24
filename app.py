@@ -11,13 +11,6 @@ import plotly.express as px
 import seaborn as sns
 import matplotlib.pyplot as plt
 from streamlit_option_menu import option_menu
-import matplotlib.font_manager as fm
-import matplotlib.pyplot as plt
-
-# NanumBarunGothic 폰트 로드
-font_path = "fonts/NanumBarunGothic.ttf"
-font_prop = fm.FontProperties(fname=font_path)
-plt.rcParams['font.family'] = font_prop.get_name()
 
 # 페이지 설정
 st.set_page_config(
