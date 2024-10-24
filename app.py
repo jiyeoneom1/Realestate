@@ -11,6 +11,7 @@ import plotly.express as px
 import seaborn as sns
 import matplotlib.pyplot as plt
 from streamlit_option_menu import option_menu
+import matplotlib.font_manager as fm  # 폰트 관련 모듈
 
 # 페이지 설정
 st.set_page_config(
@@ -19,6 +20,11 @@ st.set_page_config(
     layout="wide"
 )
 
+def load_font():
+    font_path = os.path.join(os.getcwd(), 'fonts', 'NanumBarunGothic.ttf')  # 폰트 경로 설정
+    font_prop = fm.FontProperties(fname=font_path)
+    plt.rcParams['font.family'] = font_prop.get_name()  # matplotlib에 폰트 설정
+    
 # 저장된 데이터 및 모델 로드
 @st.cache_resource
 def load_artifacts():
