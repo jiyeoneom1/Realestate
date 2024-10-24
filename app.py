@@ -20,10 +20,12 @@ st.set_page_config(
     layout="wide"
 )
 
-def load_font():
-    font_path = os.path.join(os.getcwd(), 'fonts', 'NanumBarunGothic.ttf')  # 폰트 경로 설정
-    font_prop = fm.FontProperties(fname=font_path)
-    plt.rcParams['font.family'] = font_prop.get_name()  # matplotlib에 폰트 설정
+def fontRegistered():
+    font_dirs = [os.getcwd() + '/fonts']
+    font_files = fm.findSystemFonts(fontpaths=font_dirs)
+    for font_file in font_files:
+        fm.fontManager.addfont(font_file)
+    fm._load_fontmanager(try_read_cache=False) 
     
 # 저장된 데이터 및 모델 로드
 @st.cache_resource
