@@ -387,7 +387,7 @@ elif menu == "투자 분석":
     else:
         st.warning("선택한 조건에 해당하는 데이터가 없습니다.")
                  
-    elif menu == "SHAP 분석":
+elif menu == "SHAP 분석":
         st.title("SHAP 중요도 분석")
         
         st.write("특성 중요도 시각화")
