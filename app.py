@@ -26,6 +26,9 @@ def fontRegistered():
     for font_file in font_files:
         fm.fontManager.addfont(font_file)
     fm._load_fontmanager(try_read_cache=False) 
+
+# 폰트를 등록
+fontRegistered()
     
 # 저장된 데이터 및 모델 로드
 @st.cache_resource
