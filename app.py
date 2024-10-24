@@ -22,13 +22,21 @@ st.set_page_config(
 )
 
 def fontRegistered():
-    font_dirs = [os.getcwd() + '/fonts']
+    font_dirs = [os.path.join(os.getcwd(), 'fonts')]  # 정확한 폴더 경로 확인
+    print("Font directory:", font_dirs)  # 경로 출력해서 확인
     font_files = fm.findSystemFonts(fontpaths=font_dirs)
+    
+    # 폰트 파일이 제대로 로드됐는지 확인
+    if len(font_files) == 0:
+        print("No font files found in 'fonts' directory.")
+    else:
+        print(f"Found {len(font_files)} fonts:", font_files)
+    
     for font_file in font_files:
         fm.fontManager.addfont(font_file)
-    fm._load_fontmanager(try_read_cache=False) 
+    fm._load_fontmanager(try_read_cache=False)
 
-# 폰트를 등록
+# 폰트 등록
 fontRegistered()
     
 # 저장된 데이터 및 모델 로드
