@@ -254,60 +254,138 @@ def main():
         )
         st.plotly_chart(fig, use_container_width=True)
         
-    elif menu == "투자 분석":
-        st.title("부동산 투자 분석: 지도 기반 시나리오 분석")
-        
-        # 연도 선택
-        years = sorted(df['dealt_yr'].unique())
-        selected_year = st.selectbox("연도 선택", years)
-        # 시 선택
-        si_options = df['add_si'].unique()
-        selected_si = st.selectbox("시 선택", si_options)
+elif menu == "투자 분석":
+    st.title("부동산 투자 분석: 지도 기반 시나리오 분석")
+    
+    # 연도 선택
+    years = sorted(df['dealt_yr'].unique())
+    selected_year = st.selectbox("연도 선택", years)
+    # 시 선택
+    si_options = df['add_si'].unique()
+    selected_si = st.selectbox("시 선택", si_options)
+    # 선택한 시에 해당하는 구 옵션 필터링
+    gu_options = df[df['add_si'] == selected_si]['add_gu'].unique()
+    selected_gu = st.selectbox("구 선택", gu_options)
 
-        # 선택한 시에 해당하는 구 옵션 필터링
-        gu_options = df[df['add_si'] == selected_si]['add_gu'].unique()
-        selected_gu = st.selectbox("구 선택", gu_options)
-
-        # 시나리오 분석
-        st.subheader("시나리오 분석")
-        scenario_dict = {
-            '낙관적': {'rent': 1.05, 'vacancy_rate': 0.95, 'cap_rate': 1.1, 'color': 'green'},
-            '중립적': {'rent': 1.0, 'vacancy_rate': 1.0, 'cap_rate': 1.0, 'color': 'orange'},
-            '비관적': {'rent': 0.95, 'vacancy_rate': 1.1, 'cap_rate': 0.9, 'color': 'red'}
+    # 시나리오 분석
+    st.subheader("시나리오 분석")
+    
+    # 시나리오 설정
+    scenario_dict = {
+        '낙관적': {
+            'rent_factor': 1.05,  # 임대료 5% 상승
+            'vacancy_factor': 0.95,  # 공실률 5% 감소
+            'cap_rate_factor': 1.1,  # 자본수익률 10% 상승
+            'color': '#2ecc71'  # 초록색
+        },
+        '중립적': {
+            'rent_factor': 1.0,  # 현재 수준 유지
+            'vacancy_factor': 1.0,
+            'cap_rate_factor': 1.0,
+            'color': '#f1c40f'  # 노란색
+        },
+        '비관적': {
+            'rent_factor': 0.95,  # 임대료 5% 하락
+            'vacancy_factor': 1.05,  # 공실률 5% 상승
+            'cap_rate_factor': 0.9,  # 자본수익률 10% 하락
+            'color': '#e74c3c'  # 빨간색
         }
+    }
 
-        filtered_data = df[(df['dealt_yr'] == selected_year) & (df['add_si'] == selected_si) & (df['add_gu'] == selected_gu)]
+    # 데이터 필터링
+    filtered_data = df[(df['dealt_yr'] == selected_year) & 
+                      (df['add_si'] == selected_si) & 
+                      (df['add_gu'] == selected_gu)].copy()
+    
+    if len(filtered_data) > 0:
+        # 위치 데이터 생성 (실제 위치 데이터가 없는 경우를 위한 임시 방편)
         filtered_data['lat'] = np.random.uniform(low=37.4, high=37.6, size=len(filtered_data))
         filtered_data['lon'] = np.random.uniform(low=126.8, high=127.0, size=len(filtered_data))
-        
-        fig = px.scatter_mapbox(
-            filtered_data,
-            lat='lat',
-            lon='lon',
-            color_discrete_sequence=['#1f77b4', '#ff7f0e', '#2ca02c'],
-            mapbox_style="carto-positron",
-            zoom=10,
-            title=f"{selected_year}년 {selected_si} {selected_gu} 시나리오별 분석",
-            size_max=15,
-            height=600)
 
-        for scenario, values in scenario_dict.items():
-            scenario_data = filtered_data.copy()
-            scenario_data['adjusted_rent'] = scenario_data['rent'] * values['rent']
-            scenario_data['adjusted_vacancy_rate'] = scenario_data['vacancy_rate'] * values['vacancy_rate']
-            scenario_data['adjusted_cap_rate'] = scenario_data['cap_rate'] * values['cap_rate']
+        # 시나리오별 가격 계산
+        for scenario, factors in scenario_dict.items():
+            # NOI (순영업수익) 계산
+            filtered_data[f'adjusted_rent_{scenario}'] = filtered_data['rent'] * factors['rent_factor']
+            filtered_data[f'adjusted_vacancy_{scenario}'] = filtered_data['vacancy_rate'] * factors['vacancy_factor']
+            
+            # 조정된 NOI 계산
+            filtered_data[f'adjusted_noi_{scenario}'] = (filtered_data[f'adjusted_rent_{scenario}'] * 
+                                                       (1 - filtered_data[f'adjusted_vacancy_{scenario}'] / 100))
+            
+            # 시나리오별 예상 가격 계산
+            filtered_data[f'predicted_price_{scenario}'] = (filtered_data[f'adjusted_noi_{scenario}'] / 
+                                                          (filtered_data['cap_rate'] * factors['cap_rate_factor'] / 100))
+
+        # 지도 시각화
+        fig = go.Figure()
+
+        for scenario, factors in scenario_dict.items():
             fig.add_trace(
                 go.Scattermapbox(
-                    lat=scenario_data['lat'],
-                    lon=scenario_data['lon'],
+                    lat=filtered_data['lat'],
+                    lon=filtered_data['lon'],
                     mode='markers',
-                    marker=go.scattermapbox.Marker(size=14, color=values['color']),
-                    text=[f"{scenario} 시나리오 예상 가격: {price}" for price in scenario_data['price_tr']],
-                    name=f"{scenario} 시나리오"
+                    marker=dict(
+                        size=12,
+                        color=factors['color'],
+                        opacity=0.7
+                    ),
+                    text=[
+                        f"시나리오: {scenario}<br>" +
+                        f"현재 가격: {price:,.0f}백만원<br>" +
+                        f"예상 가격: {pred_price:,.0f}백만원<br>" +
+                        f"변화율: {((pred_price/price - 1) * 100):,.1f}%<br>" +
+                        f"조정 임대료: {rent:,.0f}원/㎡<br>" +
+                        f"조정 공실률: {vacancy:.1f}%"
+                        for price, pred_price, rent, vacancy 
+                        in zip(filtered_data['price_tr'],
+                              filtered_data[f'predicted_price_{scenario}'],
+                              filtered_data[f'adjusted_rent_{scenario}'],
+                              filtered_data[f'adjusted_vacancy_{scenario}'])
+                    ],
+                    name=scenario,
+                    hoverinfo='text'
                 )
             )
-        
-        st.plotly_chart(fig)
+
+        fig.update_layout(
+            mapbox_style="carto-positron",
+            mapbox=dict(
+                center=dict(
+                    lat=filtered_data['lat'].mean(),
+                    lon=filtered_data['lon'].mean()
+                ),
+                zoom=12
+            ),
+            height=600,
+            margin={"r":0,"t":30,"l":0,"b":0},
+            title=f"{selected_year}년 {selected_si} {selected_gu} 시나리오별 분석"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # 시나리오별 통계 표시
+        st.subheader("시나리오별 예측 통계")
+        col1, col2, col3 = st.columns(3)
+
+        for idx, (scenario, factors) in enumerate(scenario_dict.items()):
+            with [col1, col2, col3][idx]:
+                current_mean = filtered_data['price_tr'].mean()
+                predicted_mean = filtered_data[f'predicted_price_{scenario}'].mean()
+                change_pct = (predicted_mean / current_mean - 1) * 100
+                
+                st.metric(
+                    label=f"{scenario} 시나리오",
+                    value=f"{predicted_mean:,.0f}백만원",
+                    delta=f"{change_pct:+.1f}%"
+                )
+                
+                # 상세 정보
+                st.write(f"평균 임대료: {filtered_data[f'adjusted_rent_{scenario}'].mean():,.0f}원/㎡")
+                st.write(f"평균 공실률: {filtered_data[f'adjusted_vacancy_{scenario}'].mean():.1f}%")
+
+    else:
+        st.warning("선택한 조건에 해당하는 데이터가 없습니다.")
                  
     elif menu == "SHAP 분석":
         st.title("SHAP 중요도 분석")
